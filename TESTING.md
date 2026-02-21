@@ -4,8 +4,8 @@
 
 This document explains every decision made when building the test suite:
 which tool was chosen at each layer, **why** that tool fits that layer,
-**what** is tested in each class, and **how** the infrastructure was set up
-to make all tests run without a real database or running server.
+**what** is tested in each class, and **how** everything was set up
+so all tests run without needing a real database or a running server.
 
 ---
 
@@ -15,8 +15,9 @@ to make all tests run without a real database or running server.
 3. [Infrastructure Setup — What Was Changed and Why](#infrastructure-setup--what-was-changed-and-why)
 4. [Phase 1 — Unit Tests](#phase-1--unit-tests)
 5. [Phase 2 — Integration Tests](#phase-2--integration-tests)
-6. [Running Tests](#running-tests)
-7. [Results Summary](#results-summary)
+6. [GitHub Actions CI/CD — How It Works and Why](#github-actions-cicd--how-it-works-and-why)
+7. [Running Tests](#running-tests)
+8. [Results Summary](#results-summary)
 
 ---
 
@@ -24,26 +25,27 @@ to make all tests run without a real database or running server.
 
 ### Why two phases instead of just one?
 
-A common mistake is writing only one kind of test.  
-This project uses **two deliberately separate phases**:
+Many projects write only one kind of test and miss problems that only appear when
+components work together. This project uses **two separate phases** to catch
+both kinds of problems:
 
 | Phase | Kind | Spring context started? | Database needed? | Typical speed |
 |-------|------|------------------------|-----------------|--------------|
 | 1 | Unit tests | No (service) / Web slice only (controller) | No | < 5 seconds total |
 | 2 | Integration tests | JPA slice (repository) / Full (controller IT) | H2 in-memory | 10–20 seconds total |
 
-**The rule**: run unit tests first. If they all pass, proceed to integration
-tests. This way, a broken service method is caught in milliseconds, not after
-waiting 15 seconds for the full Spring context to boot.
+**The rule**: run unit tests first. If they all pass, move on to integration
+tests. This way, a bug in the business logic is caught in milliseconds
+instead of waiting 15+ seconds for the full application to start.
 
 ### What does each phase prove?
 
-- **Unit tests** prove the business logic (services) and HTTP layer (controllers)
-  work correctly _in isolation_. Dependencies are replaced with fakes, so if a
-  test fails it can only be the code under test that is wrong.
-- **Integration tests** prove that the code actually works together —
-  that SQL queries return the right rows, that HTTP requests travel through
-  the full security filter chain, and that data really reaches the database.
+- **Unit tests** check one class at a time in complete isolation. Every external
+  dependency is replaced with a fake, so if a test fails the only possible cause
+  is a bug in that one class — nothing else.
+- **Integration tests** check that all the pieces work correctly together:
+  the HTTP request reaches the right controller, the database stores the right
+  data, and the security rules are enforced end-to-end.
 
 ---
 
@@ -110,20 +112,18 @@ Here is exactly what was done and the reason for each decision.
 
 **Why H2?**
 
-The production application uses PostgreSQL running inside Docker
-(configured via `compose.yaml`). You cannot run integration tests against
-that database because:
-- Tests would require the Docker container to be running.
-- Tests could corrupt or dirty real data.
-- Tests would be slow and non-deterministic.
+In production, the app uses PostgreSQL running inside Docker. We cannot use
+that database for tests because:
+- The Docker container would have to be running every time someone runs tests.
+- Tests could delete or overwrite real data.
+- Tests would be slow and unpredictable.
 
-H2 is a pure Java database that runs entirely inside the JVM process —
-no installation, no Docker, no network — it starts in milliseconds and
-is destroyed when the tests finish. It is the standard choice for
-Spring Boot integration tests.
+H2 is a lightweight database that runs entirely inside the Java program itself —
+no installation, no Docker, no network connection needed. It starts in
+milliseconds and disappears when the tests finish. It is the standard
+test database for Spring Boot projects.
 
-`scope=test` ensures H2 is never included in production builds or the
-production Docker image.
+`scope=test` makes sure H2 is never bundled into the production build or Docker image.
 
 ---
 
@@ -162,14 +162,15 @@ spring.docker.compose.enabled=false
 **How it is activated:**
 
 This file is only loaded when the Spring profile `"test"` is active.
-Every integration test class carries the annotation:
+Every integration test class has this annotation:
 ```java
 @ActiveProfiles("test")
 ```
-This tells Spring to merge `application-test.properties` on top of
-`application.properties`, overriding only the keys that are redefined.
-Service unit tests and controller unit tests do not start a full Spring
-context at all, so this file is irrelevant to them.
+This tells Spring Boot to read `application-test.properties` on top of the
+normal `application.properties`, replacing only the settings that are
+re-defined (the database URL, driver, and credentials).
+Service and controller unit tests never start a Spring context at all,
+so this file has no effect on them.
 
 ---
 
@@ -192,12 +193,11 @@ context at all, so this file is irrelevant to them.
 
 **Why this was needed:**
 
-Maven Surefire (the plugin that runs `mvn test`) only discovers files
-named `*Test.java` or `*Tests.java` by default. Integration test classes
-were intentionally named with the `IT` suffix (e.g., `TeacherControllerIT`)
-to make it visually obvious they are integration tests, not unit tests.
-Without this configuration change, running `mvn test` would silently
-skip all 34 controller integration tests.
+Maven's test runner only looks for files named `*Test.java` or `*Tests.java`
+by default. The integration test classes were named with the `IT` suffix
+(e.g., `TeacherControllerIT`) to make it immediately obvious they are
+integration tests, not unit tests. Without this extra configuration,
+`mvn test` would silently skip all 34 integration tests with no warning.
 
 ---
 
@@ -217,18 +217,16 @@ with a fake (mock) so the test only exercises the code inside the class under te
 
 **Why this approach is correct for services:**
 
-A service class such as `StudentService` has exactly two external dependencies:
-`StudentRepository` and `TeacherRepository`. The service's job is to apply
-business logic — look up an entity, validate it, mutate it, and call the
-repository to save it. The repositories themselves are just interfaces;
-their correctness is verified separately in the repository integration tests.
+A service class like `StudentService` only has two jobs: apply the business rules
+and call the repository to save or fetch data. The repository is just an interface;
+its correctness is tested separately in the repository integration tests.
 
 Using Mockito means:
-- No Spring application context is started. The test is just a plain Java object.
+- No Spring context is started — the test is just a plain Java class.
 - No database connection is made.
-- Each test runs in under 5 ms.
-- If a test fails it can only be caused by a mistake in the service method itself,
-  never by a database query or Spring wiring issue.
+- Each test finishes in under 5 ms.
+- If a test fails, the only possible cause is a bug inside that service method —
+  not a database issue, not a Spring wiring issue.
 
 **How it works:**
 
@@ -317,20 +315,20 @@ Mirrors the StudentService tests exactly but for the `Course` entity:
 
 **Why not use `@SpringBootTest` for controller unit tests?**
 
-`@SpringBootTest` starts the entire application: JPA, database connection pool,
-Hibernate, all services, all repositories. For testing a controller in isolation,
-that is wasteful — a controller contains only HTTP-level logic (request parsing,
-response building, status codes). Starting a full context would take 10–15 seconds
-just to test a method that is 5 lines long.
+`@SpringBootTest` starts the entire application — the database, JPA, Hibernate,
+every service, every repository. For testing a controller alone that is
+unnecessary; a controller only handles HTTP logic (reading the request,
+building the response, returning the right status code). A full startup
+takes 10–15 seconds just to test a 5-line method.
 
-`@WebMvcTest` loads only:
-- The `DispatcherServlet` (HTTP routing)
-- Jackson (JSON serialization)
+`@WebMvcTest` loads only what the controller needs:
+- The HTTP router (`DispatcherServlet`)
+- JSON serialization (Jackson)
 - The security filter chain
-- The one controller class specified in the annotation
+- The one controller class being tested
 
-Everything else — JPA, repositories, services — is NOT loaded.
-The service is replaced with `@MockBean`:
+Everything else — the database, JPA, repositories, services — is not loaded.
+The service is replaced with a fake using `@MockBean`:
 
 ```java
 @WebMvcTest(StudentController.class)
@@ -346,19 +344,19 @@ class StudentControllerTest {
 
 **Why `@Import(SecurityConfig.class)` is required:**
 
-Without it, `@WebMvcTest` uses a default permissive security configuration that
-ignores `@PreAuthorize` annotations. The controllers in this project use role-based
-access control (`@PreAuthorize("hasRole('ADMIN')")`). Importing `SecurityConfig`
-ensures the real filter chain is active so the tests actually verify that
-`USER` gets `403` and `ADMIN` gets `201`.
+Without it, `@WebMvcTest` uses a relaxed default security setup that ignores
+`@PreAuthorize` rules entirely. The controllers use role-based access control
+(`@PreAuthorize("hasRole('ADMIN')")`). Importing `SecurityConfig` activates
+the real security rules so that tests actually confirm a `USER` gets `403`
+and an `ADMIN` gets `201`.
 
-**Why `@WithMockUser(roles = "ADMIN")` instead of real Basic Auth credentials:**
+**Why `@WithMockUser(roles = "ADMIN")` instead of real credentials:**
 
-Real credentials (`admin` / `adminpass`) are stored as BCrypt hashes in
-`SecurityConfig`. Sending them over HTTP in a test would work but is
-unnecessarily complex. `@WithMockUser` injects a pre-authenticated
-`SecurityContext` with the specified roles, bypassing the password-check
-step while still exercising the role-based authorization logic.
+The real passwords are stored as BCrypt hashes in `SecurityConfig`. Sending
+real credentials through HTTP in a test would work but adds unnecessary
+complexity. `@WithMockUser` simply tells Spring "treat this test as if a
+user with this role is already logged in", skipping the password check step
+while still fully testing the role-based rules.
 
 ---
 
@@ -404,29 +402,27 @@ together, which unit tests cannot prove.
 
 **Why not just trust that Spring Data JPA works?**
 
-Spring Data JPA generates the implementation of repository interfaces
-automatically from their method names (e.g., `findByTeacherId`). If a method
-name is misspelt or the return type is wrong, Spring Data will throw at startup,
-but there is a subtler failure mode: the query might run without error but
-return wrong results. The only way to prove a query is correct is to run it
-against a real database with real data.
+Spring Data JPA automatically generates query code from method names like
+`findByTeacherId`. If the name is misspelled, Spring will crash at startup.
+But there is a subtler problem: the method could be named correctly and run
+without errors yet still return the wrong data. The only way to be sure a
+query is correct is to actually run it against a real database with real rows.
 
 **What `@DataJpaTest` does:**
 
-- Starts only JPA-related beans: `EntityManagerFactory`, `TransactionManager`,
-  `DataSource`, all `@Repository` beans.
-- Does **not** start web layer, security, services, or controllers.
-- Automatically replaces the configured datasource (PostgreSQL) with H2.
-- Wraps each test in a transaction that is **rolled back** at the end, so
-  data inserted in one test never leaks into the next test.
+- Starts only the database-related parts of Spring (JPA, repositories).
+- Does **not** start the web layer, security, services, or controllers.
+- Automatically swaps PostgreSQL for H2 so no Docker container is needed.
+- Wraps each test in a transaction that is **rolled back** when the test ends,
+  so data from one test can never interfere with the next one.
 
 **Why `TestEntityManager` for data setup:**
 
-`TestEntityManager` is Spring's test-only wrapper around JPA `EntityManager`.
-It is used to insert seed data **directly into the database** before each test,
-bypassing the repository being tested. This is important: if the repository
-under test is also used to set up the data, a bug in the repository could
-cause both setup and assertion to fail in a confusing way.
+`TestEntityManager` is a special Spring test tool used to insert data directly
+into the database before each test runs — without going through the repository
+being tested. This is important because if we used the repository to set up
+the test data and the repository had a bug, both the setup and the assertion
+would fail in a confusing and misleading way.
 
 ```java
 @DataJpaTest
@@ -510,34 +506,35 @@ standard CRUD) need dedicated tests — Spring Data JPA's built-in `save`,
 
 **Why this is different from `@WebMvcTest`:**
 
-`@WebMvcTest` uses a mocked service, so it never touches the database.
-`@SpringBootTest` starts the **complete** application context — security,
-controllers, services, JPA, and the H2 database all wired together exactly
-as they are in production (minus PostgreSQL). This level of test proves that:
-- The HTTP request is correctly routed to the right controller method.
+`@WebMvcTest` uses a fake service and never touches the database, so it only
+verifies the HTTP layer. `@SpringBootTest` starts the **complete application** —
+security, controllers, services, JPA, and H2 all working together, just like
+production (but with H2 instead of PostgreSQL). A single test covers the
+entire journey:
+- The HTTP request is routed to the correct controller method.
 - Security rules are enforced by the real filter chain.
-- The controller calls the service correctly.
-- The service applies business logic correctly.
+- The controller passes the data to the service correctly.
+- The service applies the business logic correctly.
 - The service calls the repository correctly.
-- The repository executes the SQL on H2.
-- The response JSON is correctly serialized.
+- The repository saves or queries the H2 database correctly.
+- The response JSON is built and returned correctly.
 
-All of those steps happen in one test, making it the highest-confidence
-test type in the suite.
+This makes it the most thorough test type in the suite — one test verifies
+everything at once.
 
 **Why `@AutoConfigureMockMvc`:**
 
-`@SpringBootTest` by default actually starts a Tomcat server on a random port.
-`@AutoConfigureMockMvc` tells Spring Boot to instead wire `MockMvc`, which
-simulates the HTTP layer in-process without a real network socket. This is faster
-and avoids port conflicts.
+`@SpringBootTest` normally starts a real Tomcat web server on a port.
+`@AutoConfigureMockMvc` tells Spring Boot to skip the real server and use
+`MockMvc` instead, which simulates HTTP calls inside the JVM process.
+This is faster and avoids problems with port numbers already being in use.
 
 **Why `@AfterEach` cleanup:**
 
-Unlike `@DataJpaTest`, `@SpringBootTest` does **not** roll back transactions
-automatically (a full `@Transactional` rollback would interfere with tests that
-verify background transactions). Each integration test must clean up its own
-data after it runs to prevent test-to-test contamination:
+Unlike `@DataJpaTest`, `@SpringBootTest` does **not** automatically undo
+database changes after each test. Each test must delete its own data
+when it finishes, otherwise leftover rows from one test can cause the
+next test to fail:
 
 ```java
 @AfterEach
@@ -569,9 +566,9 @@ void createTeacher_persistsAndReturnsCreated() throws Exception {
 }
 ```
 
-The database assertion in step 4 is what distinguishes an integration test
-from a controller unit test — it proves the data was actually saved, not just
-that the controller returned a 201 status.
+Step 4 — reading directly from the database — is what separates an integration
+test from a controller unit test. It proves the data was actually saved to the
+database, not just that the controller returned a 201 status code.
 
 ---
 
@@ -598,6 +595,199 @@ Using `TeacherControllerIT` as the reference (Student and Course follow the same
   teacher does not exist.
 - `getStudents/CoursesByTeacher` — verifies the relationship endpoint returns
   only records belonging to that teacher.
+
+---
+
+## GitHub Actions CI/CD — How It Works and Why
+
+**File:** `.github/workflows/ci.yml`
+
+Every time code is pushed to `main`/`master` or a Pull Request is opened,
+GitHub automatically runs this pipeline on a free cloud server.
+No setup required — GitHub reads the YAML file and executes it.
+
+---
+
+### Why CI/CD matters for this project
+
+Without CI/CD, every developer must remember to run the tests before pushing code.
+If one person forgets (or an error only appears on a different machine),
+a broken commit reaches the shared branch and can block the whole team.
+
+A CI pipeline makes testing **automatic and unavoidable**:
+- No one can accidentally skip them.
+- Every commit is tested the exact same way, on a clean server — not just
+  "it works on my machine".
+- Problems are caught and reported immediately, before they grow.
+
+---
+
+### Pipeline structure — two jobs
+
+```
+push / pull_request to main
+        │
+        ▼
+┌─────────────────────┐
+│   JOB 1: test       │  ← always runs
+│   (ubuntu-latest)   │
+└────────┬────────────┘
+         │ passes?
+         ▼
+┌─────────────────────┐
+│ JOB 2: docker-build │  ← only runs on push (not on PRs)
+│   (ubuntu-latest)   │
+└─────────────────────┘
+```
+
+Job 2 only starts if Job 1 passes (`needs: test`).
+This means a broken test suite never triggers a Docker build.
+
+---
+
+### Job 1 — Build & Test (step by step)
+
+#### Step 1 — `actions/checkout@v4`
+```yaml
+- name: Checkout source code
+  uses: actions/checkout@v4
+```
+Downloads your repository code onto the runner machine.
+Without this, the runner is an empty Linux box with no files.
+
+#### Step 2 — `actions/setup-java@v4`
+```yaml
+- name: Set up JDK 17
+  uses: actions/setup-java@v4
+  with:
+    java-version: '17'
+    distribution: 'temurin'
+    cache: 'maven'
+```
+Installs **JDK 17** (matching `<java.version>17</java.version>` in `pom.xml`)
+using the **Eclipse Temurin** distribution — the same one used in the `Dockerfile`.
+
+`cache: 'maven'` stores the `~/.m2` directory between workflow runs.
+The first run downloads all Maven dependencies from the internet (~100 MB).
+Every subsequent run restores them from cache in seconds.
+
+#### Step 3 — `chmod +x mvnw`
+```yaml
+- name: Make mvnw executable
+  run: chmod +x mvnw
+```
+On Windows the file permissions are not preserved.
+When checked out on Linux the `mvnw` script loses its execute bit.
+This one line fixes that; without it the next step fails with "Permission denied".
+
+#### Step 4 — `./mvnw test`
+```yaml
+- name: Run unit and integration tests
+  run: ./mvnw test --batch-mode --no-transfer-progress
+```
+Runs all **119 tests** — service unit tests, controller unit tests,
+repository integration tests, and controller integration tests.
+
+**Why no database is needed in CI:**
+The tests use `application-test.properties` activated via `@ActiveProfiles("test")`.
+This file points to H2 (in-memory) and sets `spring.docker.compose.enabled=false`.
+H2 runs inside the JVM process — no PostgreSQL, no Docker, no network port required.
+The CI runner needs nothing extra to run all tests.
+
+`--batch-mode` suppresses interactive prompts (colours, progress bars) that
+clutter CI logs.  
+`--no-transfer-progress` removes the per-byte download progress lines,
+keeping the log readable.
+
+#### Step 5 — Upload test reports
+```yaml
+- name: Upload test reports
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: test-reports
+    path: target/surefire-reports/
+    retention-days: 7
+```
+Maven Surefire writes an XML + TXT report for every test class to
+`target/surefire-reports/`. This step uploads those files as a **downloadable
+artifact** in the GitHub Actions UI.
+
+`if: always()` means this step runs **even when tests fail** — which is
+exactly when you most need the reports to diagnose what went wrong.
+Reports are kept for 7 days then automatically deleted.
+
+---
+
+### Job 2 — Build Docker Image (step by step)
+
+This job only runs on `push` events (not Pull Requests) and only after
+Job 1 succeeds.
+
+#### Step 1 — Checkout
+Same as Job 1 — downloads the source.
+
+#### Step 2 — `docker/setup-buildx-action@v3`
+```yaml
+- name: Set up Docker Buildx
+  uses: docker/setup-buildx-action@v3
+```
+Enables Docker BuildKit (the modern build engine).
+Required for the layer caching feature used in Step 3.
+
+#### Step 3 — `docker/build-push-action@v5`
+```yaml
+- name: Build Docker image
+  uses: docker/build-push-action@v5
+  with:
+    context: .
+    push: false
+    tags: sepm_assignment:latest
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
+```
+Builds the Docker image using the project's `Dockerfile`.
+`push: false` means the image is built and verified but **not pushed to any registry**.
+This proves the image can be built without actually publishing it.
+
+`cache-from/cache-to: type=gha` stores Docker layer cache inside GitHub Actions.
+The most expensive layer (`RUN mvn clean package -DskipTests` inside the Dockerfile)
+is cached after the first run, making subsequent builds much faster.
+
+---
+
+### How to push to Docker Hub (optional future step)
+
+To push the built image to Docker Hub, add two secrets to your
+GitHub repository (`Settings → Secrets → Actions`):
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+
+Then add a login step and set `push: true`:
+```yaml
+- name: Log in to Docker Hub
+  uses: docker/login-action@v3
+  with:
+    username: ${{ secrets.DOCKERHUB_USERNAME }}
+    password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+- name: Build and push Docker image
+  uses: docker/build-push-action@v5
+  with:
+    context: .
+    push: true                          # ← changed from false
+    tags: ${{ secrets.DOCKERHUB_USERNAME }}/sepm_assignment:latest
+```
+
+---
+
+### Triggering the pipeline
+
+| Event | Job 1 runs? | Job 2 runs? |
+|-------|-------------|-------------|
+| `git push` to `main`/`master` | ✅ | ✅ (if Job 1 passes) |
+| Pull Request opened/updated against `main` | ✅ | ❌ |
+| Push to any other branch | ❌ | ❌ |
 
 ---
 

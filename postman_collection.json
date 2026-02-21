@@ -1,0 +1,511 @@
+{
+	"info": {
+		"_postman_id": "school-management-api-collection",
+		"name": "School Management System API",
+		"description": "Complete API collection for School Management System with Teachers, Students, and Courses endpoints.\n\n## Authentication\nAll endpoints require Basic Authentication:\n- Admin: admin / adminpass\n- User: user / userpass\n\n## Base URL\nhttp://localhost:8081",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "username",
+				"value": "admin",
+				"type": "string"
+			},
+			{
+				"key": "password",
+				"value": "adminpass",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "teacherId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "studentId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "courseId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Teachers",
+			"description": "Teacher management endpoints",
+			"item": [
+				{
+					"name": "Get All Teachers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/teachers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "teachers"]
+						},
+						"description": "Retrieve all teachers from the database"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Teacher by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/teachers/{{teacherId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "teachers", "{{teacherId}}"]
+						},
+						"description": "Retrieve a specific teacher by their ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Teacher",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Dr. John Smith\",\n    \"email\": \"john.smith@school.edu\",\n    \"department\": \"Computer Science\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/teachers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "teachers"]
+						},
+						"description": "Create a new teacher"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Teacher",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Dr. John Smith Updated\",\n    \"email\": \"john.smith.updated@school.edu\",\n    \"department\": \"Computer Science & Engineering\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/teachers/{{teacherId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "teachers", "{{teacherId}}"]
+						},
+						"description": "Update an existing teacher"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Teacher",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/teachers/{{teacherId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "teachers", "{{teacherId}}"]
+						},
+						"description": "Delete a teacher by ID. Note: Will fail if students or courses are assigned to this teacher."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Students",
+			"description": "Student management endpoints",
+			"item": [
+				{
+					"name": "Get All Students",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "students"]
+						},
+						"description": "Retrieve all students from the database"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Student by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/{{studentId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "students", "{{studentId}}"]
+						},
+						"description": "Retrieve a specific student by their ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Student (with Teacher)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Alice Johnson\",\n    \"email\": \"alice.johnson@student.edu\",\n    \"studentId\": \"STU001\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/students/teacher/{{teacherId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "students", "teacher", "{{teacherId}}"]
+						},
+						"description": "Create a new student and assign to a teacher"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Student",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Alice Johnson Updated\",\n    \"email\": \"alice.updated@student.edu\",\n    \"studentId\": \"STU001\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/students/{{studentId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "students", "{{studentId}}"]
+						},
+						"description": "Update an existing student"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Student",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/{{studentId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "students", "{{studentId}}"]
+						},
+						"description": "Delete a student by ID"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Courses",
+			"description": "Course management endpoints",
+			"item": [
+				{
+					"name": "Get All Courses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "courses"]
+						},
+						"description": "Retrieve all courses from the database"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Course by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "courses", "{{courseId}}"]
+						},
+						"description": "Retrieve a specific course by its ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Course (with Teacher)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Introduction to Programming\",\n    \"courseCode\": \"CS101\",\n    \"credits\": 3\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/teacher/{{teacherId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "courses", "teacher", "{{teacherId}}"]
+						},
+						"description": "Create a new course and assign to a teacher"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Course",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Advanced Programming\",\n    \"courseCode\": \"CS201\",\n    \"credits\": 4\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "courses", "{{courseId}}"]
+						},
+						"description": "Update an existing course"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Course",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "courses", "{{courseId}}"]
+						},
+						"description": "Delete a course by ID"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Complete Test Workflow",
+			"description": "Run these requests in order to test the complete flow",
+			"item": [
+				{
+					"name": "1. Create Teacher (First)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.id) {",
+									"    pm.collectionVariables.set('teacherId', jsonData.id);",
+									"    console.log('Teacher ID saved: ' + jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Dr. Test Professor\",\n    \"email\": \"test.professor@school.edu\",\n    \"department\": \"Test Department\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/teachers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "teachers"]
+						},
+						"description": "Step 1: Create a teacher first (required for students and courses)"
+					},
+					"response": []
+				},
+				{
+					"name": "2. Create Student (Uses Teacher ID)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.id) {",
+									"    pm.collectionVariables.set('studentId', jsonData.id);",
+									"    console.log('Student ID saved: ' + jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Student\",\n    \"email\": \"test.student@student.edu\",\n    \"studentId\": \"TEST001\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/students/teacher/{{teacherId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "students", "teacher", "{{teacherId}}"]
+						},
+						"description": "Step 2: Create a student assigned to the teacher"
+					},
+					"response": []
+				},
+				{
+					"name": "3. Create Course (Uses Teacher ID)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.id) {",
+									"    pm.collectionVariables.set('courseId', jsonData.id);",
+									"    console.log('Course ID saved: ' + jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Test Course 101\",\n    \"courseCode\": \"TEST101\",\n    \"credits\": 3\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/teacher/{{teacherId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "courses", "teacher", "{{teacherId}}"]
+						},
+						"description": "Step 3: Create a course assigned to the teacher"
+					},
+					"response": []
+				},
+				{
+					"name": "4. Verify All Teachers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/teachers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "teachers"]
+						},
+						"description": "Step 4: Verify all data was created - Teachers"
+					},
+					"response": []
+				},
+				{
+					"name": "5. Verify All Students",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "students"]
+						},
+						"description": "Step 5: Verify all data was created - Students"
+					},
+					"response": []
+				},
+				{
+					"name": "6. Verify All Courses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "courses"]
+						},
+						"description": "Step 6: Verify all data was created - Courses"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Health Check",
+			"description": "Basic connectivity test",
+			"item": [
+				{
+					"name": "API Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/teachers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "teachers"]
+						},
+						"description": "Simple health check to verify the API is running and authentication works"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

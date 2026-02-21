@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨 WRONG URL - READ THIS! 🚨</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .error-icon {
+            text-align: center;
+            font-size: 100px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        h1 {
+            color: #e53e3e;
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .wrong-url {
+            background: #fed7d7;
+            border: 3px solid #fc8181;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 20px;
+            text-align: center;
+        }
+
+        .wrong-url::before {
+            content: "❌ ";
+            font-size: 24px;
+        }
+
+        .correct-url {
+            background: #c6f6d5;
+            border: 3px solid #48bb78;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 24px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .correct-url::before {
+            content: "✅ ";
+            font-size: 28px;
+        }
+
+        .redirect-button {
+            display: block;
+            background: #667eea;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 30px 0;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .redirect-button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .info-box {
+            background: #fef9e7;
+            border-left: 5px solid #f39c12;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .info-box h3 {
+            color: #d68910;
+            margin-bottom: 10px;
+        }
+
+        .steps {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .steps ol {
+            margin-left: 20px;
+        }
+
+        .steps li {
+            margin: 15px 0;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        .credentials {
+            background: #e6fffa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .credentials h3 {
+            color: #2c7a7b;
+            margin-bottom: 10px;
+        }
+
+        code {
+            background: #2d3748;
+            color: #68d391;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .countdown {
+            text-align: center;
+            font-size: 18px;
+            color: #666;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-icon">⚠️</div>
+
+        <h1>YOU'RE AT THE WRONG URL!</h1>
+
+        <div class="wrong-url">
+            This is VS Code Live Server (port 5500)<br>
+            It only serves static files - NO backend!
+        </div>
+
+        <div class="correct-url">
+            Use: http://localhost:8081
+        </div>
+
+        <a href="http://localhost:8081" class="redirect-button" id="redirectBtn">
+            🚀 CLICK HERE TO GO TO THE REAL APP
+        </a>
+
+        <div class="countdown" id="countdown"></div>
+
+        <div class="info-box">
+            <h3>🤔 Why isn't this working?</h3>
+            <p>You opened the HTML file with VS Code's Live Server extension. Live Server (port 5500) only serves static HTML/CSS/JavaScript files. It doesn't have:</p>
+            <ul style="margin: 10px 0 0 20px;">
+                <li>❌ No Spring Boot backend</li>
+                <li>❌ No REST API</li>
+                <li>❌ No database connection</li>
+                <li>❌ No authentication</li>
+            </ul>
+        </div>
+
+        <div class="steps">
+            <h3>📝 Manual Steps (if button doesn't work):</h3>
+            <ol>
+                <li>Make sure Docker containers are running:
+                    <br><code>docker compose up -d</code>
+                </li>
+                <li>Close this tab</li>
+                <li>Open a new tab</li>
+                <li>Type exactly: <code>http://localhost:8081</code></li>
+                <li>Press <code>Ctrl + Shift + R</code> to force refresh</li>
+            </ol>
+        </div>
+
+        <div class="credentials">
+            <h3>🔑 Login Credentials:</h3>
+            <p><strong>Admin:</strong> username = <code>admin</code>, password = <code>adminpass</code></p>
+            <p><strong>User:</strong> username = <code>user</code>, password = <code>userpass</code></p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-redirect after 10 seconds
+        let seconds = 10;
+        const countdownEl = document.getElementById('countdown');
+        const redirectBtn = document.getElementById('redirectBtn');
+
+        function updateCountdown() {
+            if (seconds > 0) {
+                countdownEl.textContent = `Auto-redirecting in ${seconds} seconds...`;
+                seconds--;
+                setTimeout(updateCountdown, 1000);
+            } else {
+                window.location.href = 'http://localhost:8081';
+            }
+        }
+
+        updateCountdown();
+
+        // Immediate redirect on button click
+        redirectBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            countdownEl.textContent = 'Redirecting now...';
+            setTimeout(() => {
+                window.location.href = 'http://localhost:8081';
+            }, 500);
+        });
+    </script>
+</body>
+</html>
